@@ -1993,8 +1993,8 @@ public class TaskManager {
     /**
      * @throws TaskMigratedException if the task producer got fenced (EOS only)
      */
-    int punctuate() {
-        return  taskExecutor.punctuate();
+    int punctuate(final Runnable afterPunctuate) {
+        return  taskExecutor.punctuate(afterPunctuate);
     }
 
     void maybePurgeCommittedRecords() {

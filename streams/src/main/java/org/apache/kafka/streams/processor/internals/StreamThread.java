@@ -1020,7 +1020,18 @@ public class StreamThread extends Thread implements ProcessingThread {
                           processed,
                           numIterations);
 
-                final int punctuated = taskManager.punctuate();
+                final AtomicLong totalPunctuateCommitLatency = new AtomicLong(0);
+                final AtomicInteger totalPunctuateCommitted = new AtomicInteger(0);
+                final int punctuated = taskManager.punctuate(() -> {
+                    // since a single punctuator can take a long time (looping through state stores, etc), check if
+                    // a commit is needed after each one to stay within any transactional timeout
+                    final long beforeCommitMs = now;
+                    final int committed = maybeCommit();
+                    totalPunctuateCommitted.addAndGet(committed);
+                    final long commitLatency = Math.max(now - beforeCommitMs, 0);
+                    totalPunctuateCommitLatency.addAndGet(commitLatency);
+                });
+                totalCommitLatency += totalPunctuateCommitLatency.get();
                 totalPunctuatorsSinceLastSummary += punctuated;
                 final long punctuateLatency = advanceNowAndComputeLatency();
                 totalPunctuateLatency += punctuateLatency;
@@ -1031,7 +1042,7 @@ public class StreamThread extends Thread implements ProcessingThread {
                 log.debug("{} punctuators ran.", punctuated);
 
                 final long beforeCommitMs = now;
-                final int committed = maybeCommit();
+                final int committed = maybeCommit() + totalPunctuateCommitted.get();
                 final long commitLatency = Math.max(now - beforeCommitMs, 0);
                 totalCommitLatency += commitLatency;
                 if (committed > 0) {

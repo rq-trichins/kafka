@@ -23,10 +23,15 @@ import org.apache.kafka.streams.processor.TaskId;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.kafka.streams.internals.StreamsConfigUtils.ProcessingMode.EXACTLY_ONCE_ALPHA;
 import static org.apache.kafka.streams.internals.StreamsConfigUtils.ProcessingMode.EXACTLY_ONCE_V2;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,8 +45,34 @@ public class TaskExecutorTest {
 
         final TaskExecutor taskExecutor = new TaskExecutor(tasks, taskManager, metadata, new LogContext());
 
-        taskExecutor.punctuate();
+        taskExecutor.punctuate(() -> { });
         verify(tasks).activeTasks();
+    }
+
+    @Test
+    public void testAfterPunctuateIsCalled() {
+        final Tasks tasks = mock(Tasks.class);
+        final TaskManager taskManager = mock(TaskManager.class);
+        final TaskExecutionMetadata metadata = mock(TaskExecutionMetadata.class);
+        final List<Task> taskList = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            final Task task = mock(Task.class);
+            when(metadata.canPunctuateTask(task)).thenReturn(true);
+            if (i % 2 == 0) {
+                when(task.maybePunctuateStreamTime()).thenReturn(true);
+            } else {
+                when(task.maybePunctuateSystemTime()).thenReturn(true);
+            }
+            taskList.add(task);
+        }
+
+        when(tasks.activeTasks()).thenReturn(taskList);
+
+        final TaskExecutor taskExecutor = new TaskExecutor(tasks, taskManager, metadata, new LogContext());
+
+        final AtomicInteger punctuated = new AtomicInteger(0);
+        taskExecutor.punctuate(punctuated::incrementAndGet);
+        assertThat(punctuated.get(), equalTo(2));
     }
 
     @Test

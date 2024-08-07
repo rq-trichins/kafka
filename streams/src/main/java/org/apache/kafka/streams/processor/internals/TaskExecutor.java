@@ -277,7 +277,7 @@ public class TaskExecutor {
     /**
      * @throws TaskMigratedException if the task producer got fenced (EOS only)
      */
-    int punctuate() {
+    int punctuate(final Runnable afterPunctuate) {
         int punctuated = 0;
 
         for (final Task task : tasks.activeTasks()) {
@@ -289,6 +289,7 @@ public class TaskExecutor {
                     if (task.maybePunctuateSystemTime()) {
                         punctuated++;
                     }
+                    afterPunctuate.run();
                 }
             } catch (final TaskMigratedException e) {
                 log.info("Failed to punctuate stream task {} since it got migrated to another thread already. " +

@@ -4169,7 +4169,7 @@ public class TaskManagerTest {
 
         assertThat(task00.state(), is(Task.State.RUNNING));
 
-        assertThrows(TaskMigratedException.class, () -> taskManager.punctuate());
+        assertThrows(TaskMigratedException.class, () -> taskManager.punctuate(() -> { }));
     }
 
     @Test
@@ -4189,7 +4189,7 @@ public class TaskManagerTest {
 
         assertThat(task00.state(), is(Task.State.RUNNING));
 
-        assertThrows(KafkaException.class, () -> taskManager.punctuate());
+        assertThrows(KafkaException.class, () -> taskManager.punctuate(() -> { }));
     }
 
     @Test
@@ -4215,7 +4215,7 @@ public class TaskManagerTest {
         assertThat(task00.state(), is(Task.State.RUNNING));
 
         // one for stream and one for system time
-        assertThat(taskManager.punctuate(), equalTo(2));
+        assertThat(taskManager.punctuate(() -> { }), equalTo(2));
     }
 
     @Test
